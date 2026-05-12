@@ -10,14 +10,9 @@ from t5_rag_advanced.embeddings.embeddings_client import EmbeddingsClient
 from t5_rag_advanced.embeddings.text_processor import TextProcessor, SearchMode
 
 SYSTEM_PROMPT = """
-You are a RAG-powered assistant specializing in microwave manual assistance.
-Your task is to answer user questions based on the provided RAG Context.
-
-User messages will be structured with a "RAG Context" section followed by a "User Question".
-Please adhere to the following rules:
-1. Use ONLY the provided RAG Context to answer the User Question.
-2. If the answer cannot be found in the context, politely state that you can only answer questions related to the microwave based on the manual.
-3. Do not answer questions that are not related to microwave usage or are outside the scope of the provided context.
+You are a Tiguan manual assistant. Answer ONLY using the provided RAG Context.
+If the answer is not in the context, reply: "I don't have information about that in the manual."
+Be concise.
 """
 
 USER_PROMPT = """
@@ -55,7 +50,7 @@ def main():
     load_context = input("Do you want to load context from file? (y/n): ").lower() == 'y'
     if load_context:
         text_processor.process_text_file(
-            file_path='t5_rag_advanced/embeddings/microwave_manual.txt',
+            file_path='t5_rag_advanced/embeddings/tiguan-2026-owners-manual.pdf',
             chunk_size=300,
             overlap=40,
             dimensions=384,
@@ -75,7 +70,7 @@ def main():
 
         # Retrieval
         relevant_chunks = text_processor.search(
-            mode=SearchMode.COSINE_DISTANCE,
+            search_mode=SearchMode.COSINE_DISTANCE,
             query=user_input,
             top_k=5,
             min_score=0.5,

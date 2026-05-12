@@ -2,6 +2,7 @@ from enum import StrEnum
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from pypdf import PdfReader
 
 from t5_rag_advanced.embeddings.embeddings_client import EmbeddingsClient
 from t5_rag_advanced.utils.text import chunk_text
@@ -40,15 +41,20 @@ class TextProcessor:
             (document_name, text, str(embedding))
         )
 
+    def _read_text(self, file_path: str) -> str:
+        if file_path.endswith('.pdf'):
+            reader = PdfReader(file_path)
+            return "\n".join(page.extract_text() or "" for page in reader.pages)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read()
+
     def process_text_file(self, file_path: str, chunk_size: int, overlap: int, dimensions: int, truncate: bool = False):
         with self._get_connection() as conn:
             with conn.cursor() as cur:
                 if truncate:
                     self._truncate_table(cur)
 
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    text = f.read()
-
+                text = self._read_text(file_path)
                 chunks = chunk_text(text, chunk_size, overlap)
                 embeddings = self.embeddings_client.get_embeddings(chunks, dimensions)
 
@@ -57,10 +63,10 @@ class TextProcessor:
                     self._save_chunk(cur, file_path, chunk, embedding)
             conn.commit()
 
-    def search(self, mode: SearchMode, query: str, top_k: int, min_score: float, dimensions: int):
+    def search(self, search_mode: SearchMode, query: str, top_k: int, min_score: float, dimensions: int):
         query_embedding = self.embeddings_client.get_embeddings([query], dimensions)[0]
 
-        operator = "<->" if mode == SearchMode.EUCLIDIAN_DISTANCE else "<=>"
+        operator = "<->" if search_mode == SearchMode.EUCLIDIAN_DISTANCE else "<=>"
 
         sql = f"""
         SELECT text, embedding {operator} %s::vector AS distance
