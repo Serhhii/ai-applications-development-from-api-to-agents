@@ -1,29 +1,46 @@
 ---
 name: calculator
 description: >
-    # TODO:
-    # Write a 2-3 sentence description of what this skill does and when the agent should use it.
-    # Cover: what types of calculations it handles, what operations are supported,
-    # and what user requests should trigger this skill (e.g. calculate, compute, evaluate, solve, etc.).
+  A safe math expression evaluator. Use this skill whenever the user asks to
+  calculate, compute, evaluate, or solve a numeric expression. Supports
+  arithmetic, powers, trigonometry, square roots, logarithms, floor/ceiling,
+  and the constants pi and e.
 ---
 
 # Calculator Skill
 
-<!--
-TODO: Fill in this SKILL.md with instructions telling the AI agent how to use the calculator skill.
-The script is already implemented at scripts/calculate.py — study it to understand what it does.
-
-Your SKILL.md should include the following sections:
-
 ## Quick Start
-Provide the shell command to run the script.
-Hint: the script takes an expression as a command-line argument:
-  python /skills/calculator/scripts/calculate.py "<expression>"
+
+Run the script with the expression as a single quoted argument:
+
+```
+python /skills/calculator/scripts/calculate.py "<expression>"
+```
+
+Example:
+```
+python /skills/calculator/scripts/calculate.py "sqrt(144) + 2^8"
+```
 
 ## Supported Operations
-List all supported operations (read calculate.py to discover them):
-Arithmetic, Power / exponentiation, Square, Floor division and modulo operators, Trigonometric functions, Mathematical constants, Grouping with parentheses
+
+| Category | Syntax / Functions |
+|---|---|
+| Arithmetic | `+`, `-`, `*`, `/` |
+| Power / exponentiation | `**` or `^` (both work) |
+| Floor division & modulo | `//`, `%` |
+| Square root | `sqrt(x)` |
+| Absolute value | `abs(x)` |
+| Rounding | `round(x)`, `floor(x)`, `ceil(x)` |
+| Logarithms | `log(x)`, `log10(x)` |
+| Trigonometry | `sin(x)`, `cos(x)`, `tan(x)` (radians) |
+| Constants | `pi`, `e` |
+| Grouping | `( )` |
 
 ## Workflow
-Step-by-step instructions for the agent
--->
+
+1. Parse the user's request and extract the mathematical expression.
+2. Translate any natural-language parts into a valid expression (e.g. "two to the power of ten" → `2^10`).
+3. Run the script: `python /skills/calculator/scripts/calculate.py "<expression>"`
+4. Return the printed `Result:` line to the user.
+5. If the script prints an `Error:`, explain it clearly and ask the user to rephrase.

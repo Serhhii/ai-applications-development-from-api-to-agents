@@ -1,44 +1,27 @@
-import json
-
-import requests
-
-
+from sentence_transformers import SentenceTransformer
 
 
 class EmbeddingsClient:
-    _endpoint: str
-    _api_key: str
 
     def __init__(self, endpoint: str, model_name: str, api_key: str):
-        if not api_key or api_key.strip() == "":
-            raise ValueError("API key cannot be null or empty")
-
-        self._endpoint = endpoint
-        self._api_key = "Bearer " + api_key
-        self._model_name = model_name
+        self._model = SentenceTransformer(model_name)
 
     def get_embeddings(
-            self, inputs: str | list[str],
+            self,
+            inputs: str | list[str],
             dimensions: int,
-            print_response: bool = False
+            print_response: bool = False,
     ) -> dict[int, list[float]]:
         """
         Generate dict of indexed embeddings:
             inputs[0](text) -> [0][embedding]
             inputs[1](text) -> [1][embedding]
             ...
-
-        Args:
-            inputs: input text, can be singular string or list of strings
-            dimensions: number of dimensions
-            print_response: to print response in chat or not
         """
-        #TODO:
-        # ---
-        # https://developers.openai.com/api/reference/resources/embeddings/methods/create
-        # ---
-        # Provide implementation that will generate embeddings for `inputs` list (don't forget about dimensions) with
-        # Embedding model and return back a dict with indexed embeddings (key is index from input list and value vector list)
+        if isinstance(inputs, str):
+            inputs = [inputs]
+        vectors = self._model.encode(inputs, normalize_embeddings=True)
+        return {i: v.tolist() for i, v in enumerate(vectors)}
 
 
 # Hint:

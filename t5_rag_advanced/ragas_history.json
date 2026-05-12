@@ -1,0 +1,58 @@
+[
+  {
+    "run": "2026-05-11 13:15:00",
+    "faithfulness": 0.7817,
+    "answer_relevancy": 0.5719,
+    "context_recall": 0.0,
+    "factual_correctness(mode=f1)": 0.25
+  },
+  {
+    "run": "2026-05-11 13:25:00",
+    "faithfulness": 0.8056,
+    "answer_relevancy": 0.5664,
+    "context_recall": 0.0,
+    "factual_correctness(mode=f1)": 0.2433
+  },
+  {
+    "run": "2026-05-11 13:35:00",
+    "faithfulness": 0.8205,
+    "answer_relevancy": 0.5638,
+    "context_recall": 0.0,
+    "factual_correctness(mode=f1)": 0.243
+  },
+  {
+    "run": "2026-05-11 13:42:00",
+    "faithfulness": 0.7393,
+    "answer_relevancy": 0.576,
+    "context_recall": 0.7111,
+    "factual_correctness(mode=f1)": 0.4267
+  },
+  {
+    "run": "2026-05-11 13:46:00",
+    "faithfulness": 0.7896,
+    "answer_relevancy": 0.5671,
+    "context_recall": 0.7111,
+    "factual_correctness(mode=f1)": 0.4167
+  },
+  {
+    "run": "2026-05-11 13:49:02",
+    "faithfulness": 0.7804,
+    "answer_relevancy": 0.5719,
+    "context_recall": 0.6556,
+    "factual_correctness(mode=f1)": 0.4517
+  },
+  {
+    "run": "2026-05-11 13:56:00",
+    "faithfulness": 0.7938,
+    "answer_relevancy": 0.5665,
+    "context_recall": 0.7111,
+    "factual_correctness(mode=f1)": 0.4617
+  },
+  {
+    "run": "2026-05-11 13:57:28",
+    "faithfulness": 0.7674,
+    "answer_relevancy": 0.5654,
+    "context_recall": 0.7111,
+    "factual_correctness(mode=f1)": 0.42
+  }
+]

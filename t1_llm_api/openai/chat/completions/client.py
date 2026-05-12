@@ -29,12 +29,9 @@ class OpenAIClient(BaseOpenAIClient):
             system_prompt (str): The system message to guide the model's behavior.
             api_key (str): The OpenAI API key for authentication.
         """
-        #TODO:
-        # Call to __init__ of super class
-        # Add OpenAI and AsyncOpenAI clients https://github.com/openai/openai-python?tab=readme-ov-file#usage
-        # (In readme you can find samples with both of these clients)
-        # Useful link with request/response samples https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
-        raise NotImplementedError
+        super().__init__(endpoint=endpoint, model_name=model_name, system_prompt=system_prompt, api_key=api_key)
+        self._client = OpenAI(api_key=api_key)
+        self._async_client = AsyncOpenAI(api_key=api_key)
 
     def response(self, messages: list[Message], **kwargs) -> Message:
         """
@@ -51,12 +48,14 @@ class OpenAIClient(BaseOpenAIClient):
             The system prompt is automatically prepended to the messages.
             The response is printed to stdout before being returned.
         """
-        #TODO:
-        # - Prepare message history with System prompt
-        # - Call client
-        # - Print response to console
-        # - Return ASSISTANT message
-        raise NotImplementedError
+        all_messages = [{"role": "system", "content": self._system_prompt}] + [m.to_dict() for m in messages]
+        completion = self._client.chat.completions.create(
+            model=self._model_name,
+            messages=all_messages,
+        )
+        response_text = completion.choices[0].message.content
+        print(response_text)
+        return Message(role=Role.ASSISTANT, content=response_text)
 
     async def stream_response(self, messages: list[Message], **kwargs) -> Message:
         """
@@ -76,10 +75,17 @@ class OpenAIClient(BaseOpenAIClient):
             The system prompt is automatically prepended to the messages.
             Each token is printed to stdout as it arrives for real-time display.
         """
-        #TODO:
-        # - Prepare message history with System prompt
-        # - Call client with streaming mode
-        # - Handle stream with chunks
-        # - Print response to console
-        # - Return ASSISTANT message
-        raise NotImplementedError
+        all_messages = [{"role": "system", "content": self._system_prompt}] + [m.to_dict() for m in messages]
+        stream = await self._async_client.chat.completions.create(
+            model=self._model_name,
+            messages=all_messages,
+            stream=True,
+        )
+        full_response = ""
+        async for chunk in stream:
+            delta = chunk.choices[0].delta.content
+            if delta:
+                print(delta, end="", flush=True)
+                full_response += delta
+        print()
+        return Message(role=Role.ASSISTANT, content=full_response)

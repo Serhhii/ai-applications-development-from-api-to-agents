@@ -1,8 +1,6 @@
-import json
-from collections import defaultdict
 from typing import Any
 
-from openai import AsyncOpenAI
+from anthropic import AsyncAnthropic
 
 from commons.models.message import Message
 from commons.models.role import Role
@@ -10,78 +8,69 @@ from t9_mcp_fundamentals.agent.mcp_clients.base import MCPClient
 
 
 class AgentMCPFundamentals:
-    """Handles AI model interactions and integrates with MCP client"""
+    """Handles Claude model interactions and integrates with MCP client"""
 
     def __init__(self, api_key: str, model: str, tools: list[dict[str, Any]], mcp_client: MCPClient):
-        self.model=model
+        self.model = model
         self.tools = tools
         self.mcp_client = mcp_client
-        self.openai = AsyncOpenAI(api_key=api_key)
+        self.client = AsyncAnthropic(api_key=api_key)
 
-    def _collect_tool_calls(self, tool_deltas):
-        """Convert streaming tool call deltas to complete tool calls"""
-        tool_dict = defaultdict(lambda: {"id": None, "function": {"arguments": "", "name": None}, "type": None})
-
-        for delta in tool_deltas:
-            idx = delta.index
-            if delta.id: tool_dict[idx]["id"] = delta.id
-            if delta.function.name: tool_dict[idx]["function"]["name"] = delta.function.name
-            if delta.function.arguments: tool_dict[idx]["function"]["arguments"] += delta.function.arguments
-            if delta.type: tool_dict[idx]["type"] = delta.type
-
-        return list(tool_dict.values())
-
-    async def _stream_response(self, messages: list[Message]) -> Message:
-        """Stream OpenAI response and handle tool calls"""
-        stream = await self.openai.chat.completions.create(
-            **{
-                "model": self.model,
-                "messages": [msg.to_dict() for msg in messages],
-                "tools": self.tools,
-                "temperature": 0.0,
-                "stream": True
-            }
-        )
-
-        content = ""
-        tool_deltas = []
-
-        print("🤖: ", end="", flush=True)
-
-        async for chunk in stream:
-            delta = chunk.choices[0].delta
-
-            # Stream content
-            if delta.content:
-                print(delta.content, end="", flush=True)
-                content += delta.content
-
-            if delta.tool_calls:
-                tool_deltas.extend(delta.tool_calls)
-
-        print()
-        return Message(
-            role=Role.ASSISTANT,
-            content=content,
-            tool_calls=self._collect_tool_calls(tool_deltas) if tool_deltas else []
-        )
+    def _build_anthropic_messages(self, messages: list[Message]) -> tuple[str, list[dict]]:
+        system = ""
+        anthropic_msgs = []
+        for msg in messages:
+            if msg.role == Role.SYSTEM:
+                system = msg.content
+            elif msg.role == Role.USER:
+                anthropic_msgs.append({"role": "user", "content": msg.content})
+            elif msg.role == Role.ASSISTANT:
+                anthropic_msgs.append({"role": "assistant", "content": msg.content})
+        return system, anthropic_msgs
 
     async def get_response(self, messages: list[Message]) -> Message:
-        """Process user query with streaming and tool calling"""
-        ai_message: Message = await self._stream_response(messages)
+        system, anthropic_messages = self._build_anthropic_messages(messages)
+        return await self._run(system, anthropic_messages)
 
-        if ai_message.tool_calls:
-            messages.append(ai_message)
-            await self._call_tools(ai_message, messages)
-            return await self.get_response(messages)
+    async def _run(self, system: str, anthropic_messages: list[dict]) -> Message:
+        content_text = ""
 
-        return ai_message
+        print("🤖: ", end="", flush=True)
+        async with self.client.messages.stream(
+            model=self.model,
+            max_tokens=4096,
+            system=system,
+            tools=self.tools,
+            messages=anthropic_messages,
+        ) as stream:
+            async for text in stream.text_stream:
+                print(text, end="", flush=True)
+                content_text += text
+            final = await stream.get_final_message()
+        print()
 
-    async def _call_tools(self, ai_message: Message, messages: list[Message]):
-        """Execute tool calls using MCP client"""
-        #TODO:
-        # 1. Iterate through tool_calls
-        # 2. Get tool name and tool arguments (arguments is a JSON, don't forget about that)
-        # 3. Wrap into try/except block and call mcp_client tool call. If succeed then add tool message (don't forget
-        #    about tool call id), otherwise add tool message with error message (it kind of fallback strategy).
-        raise NotImplementedError()
+        tool_uses = [block for block in final.content if block.type == "tool_use"]
+
+        if not tool_uses:
+            return Message(role=Role.ASSISTANT, content=content_text)
+
+        anthropic_messages.append({"role": "assistant", "content": final.content})
+
+        tool_results = []
+        for tool_use in tool_uses:
+            try:
+                result = await self.mcp_client.call_tool(tool_use.name, dict(tool_use.input))
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_use.id,
+                    "content": str(result),
+                })
+            except Exception as e:
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_use.id,
+                    "content": f"Error: {e}",
+                })
+
+        anthropic_messages.append({"role": "user", "content": tool_results})
+        return await self._run(system, anthropic_messages)

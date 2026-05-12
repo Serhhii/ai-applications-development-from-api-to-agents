@@ -14,22 +14,39 @@ class WebSearchTool(BaseTool):
 
     @property
     def name(self) -> str:
-        #TODO: Provide tool name as `web_search_tool`
-        raise NotImplementedError()
+        return "web_search_tool"
 
     @property
     def description(self) -> str:
-        #TODO: Provide description of this tool
-        raise NotImplementedError()
+        return "Search the web for up-to-date information on any topic."
 
     @property
     def input_schema(self) -> dict[str, Any]:
-        #TODO: Provide tool params Schema (it applies `request` string to search by)
-        raise NotImplementedError()
+        return {
+            "type": "object",
+            "properties": {
+                "request": {"type": "string", "description": "The search query or question to look up on the web."},
+            },
+            "required": ["request"],
+        }
 
     def execute(self, arguments: dict[str, Any]) -> str:
-        #TODO:
-        # https://developers.openai.com/api/docs/guides/tools-web-search
-        # 1. Make POST call to `gpt-5.2` with request "tools": [{"type": "web_search"}],
-        # 4. Check if response status is 200 and if yes then return message content, otherwise return `f"Error: {response.status_code} {response.text}"`
-        raise NotImplementedError()
+        payload = {
+            "model": "gpt-5.2",
+            "tools": [{"type": "web_search"}],
+            "input": arguments["request"],
+        }
+        response = requests.post(
+            self.__endpoint,
+            headers={"Authorization": self.__api_key, "Content-Type": "application/json"},
+            json=payload,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            for block in data.get("output", []):
+                if block.get("type") == "message":
+                    for content in block.get("content", []):
+                        if content.get("type") == "output_text":
+                            return content["text"]
+            return str(data)
+        return f"Error: {response.status_code} {response.text}"

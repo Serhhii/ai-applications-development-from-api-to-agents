@@ -36,15 +36,32 @@ class CustomGeminiAIClient(AIClient):
             Uses 'x-goog-api-key' header for authentication.
             Response candidates contain content parts that are concatenated.
         """
-        #TODO:
-        # https://ai.google.dev/gemini-api/docs/text-generation
-        # - Prepare headers with api key and content type
-        # - Add System prompt
-        # - Execute post request to AI API (use `requests`)
-        # - Parse response
-        # - Print response to console
-        # - Return ASSISTANT message
-        raise NotImplementedError
+        max_tokens = kwargs.get("max_tokens", 1024)
+        headers = {"x-goog-api-key": self._api_key, "Content-Type": "application/json"}
+        contents = [
+            {"role": "user" if m.role == Role.USER else "model", "parts": [{"text": m.content}]}
+            for m in messages
+        ]
+        payload = {
+            "system_instruction": {"parts": [{"text": self._system_prompt}]},
+            "contents": contents,
+            "generationConfig": {"maxOutputTokens": max_tokens},
+        }
+        url = f"{self._endpoint}/{self._model_name}:generateContent"
+        resp = requests.post(url, headers=headers, json=payload)
+        if resp.status_code != 200:
+            raise Exception(f"API request failed: {resp.status_code} {resp.text}")
+        data = resp.json()
+        if not data.get("candidates"):
+            raise ValueError("No candidates in response")
+        response_text = "".join(
+            part["text"]
+            for candidate in data["candidates"]
+            for part in candidate["content"]["parts"]
+            if "text" in part
+        )
+        print(response_text)
+        return Message(role=Role.ASSISTANT, content=response_text)
 
     async def stream_response(self, messages: list[Message], **kwargs) -> Message:
         """
@@ -66,13 +83,33 @@ class CustomGeminiAIClient(AIClient):
             Each SSE chunk contains candidates with content parts.
             Each text chunk is printed to stdout as it arrives.
         """
-        #TODO:
-        # https://ai.google.dev/gemini-api/docs/text-generation
-        # - Prepare headers with api key and content type
-        # - Add System prompt
-        # - Execute post request to AI API (use `aiohttp`)
-        # - Handle stream with chunks
-        # - Parse response
-        # - Print chunks to console
-        # - Return ASSISTANT message
-        raise NotImplementedError
+        max_tokens = kwargs.get("max_tokens", 1024)
+        headers = {"x-goog-api-key": self._api_key, "Content-Type": "application/json"}
+        contents = [
+            {"role": "user" if m.role == Role.USER else "model", "parts": [{"text": m.content}]}
+            for m in messages
+        ]
+        payload = {
+            "system_instruction": {"parts": [{"text": self._system_prompt}]},
+            "contents": contents,
+            "generationConfig": {"maxOutputTokens": max_tokens},
+        }
+        url = f"{self._endpoint}/{self._model_name}:streamGenerateContent?alt=sse"
+        full_response = ""
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=payload) as resp:
+                async for line in resp.content:
+                    line = line.decode("utf-8").strip()
+                    if not line.startswith("data: "):
+                        continue
+                    try:
+                        data = json.loads(line[6:])
+                        for candidate in data.get("candidates", []):
+                            for part in candidate.get("content", {}).get("parts", []):
+                                if "text" in part:
+                                    print(part["text"], end="", flush=True)
+                                    full_response += part["text"]
+                    except json.JSONDecodeError:
+                        pass
+        print()
+        return Message(role=Role.ASSISTANT, content=full_response)

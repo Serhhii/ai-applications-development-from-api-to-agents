@@ -74,26 +74,21 @@ class BaseTool(ABC):
 
     @property
     def openai_schema(self) -> dict[str, Any]:
-        """Tool schema formatted for the OpenAI Chat Completions API.
-
-        Wraps ``name``, ``description``, and ``input_schema`` inside the
-        ``{"type": "function", "function": {...}}`` envelope that OpenAI
-        expects in the ``tools`` array.
-        https://developers.openai.com/api/docs/guides/function-calling#defining-functions
-        """
-        #TODO:
-        # Provide dict with tool configuration in according to OpenAI Spec
-        raise NotImplementedError
+        """Tool schema formatted for the OpenAI Chat Completions API."""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self.input_schema,
+            },
+        }
 
     @property
     def anthropic_schema(self) -> dict[str, Any]:
-        """Tool schema formatted for the Anthropic Messages API.
-
-        Returns a flat dict with ``name``, ``description``, and
-        ``input_schema`` — the structure Anthropic expects directly in the
-        ``tools`` array (no ``"type": "function"`` wrapper).
-        https://platform.claude.com/docs/en/api/messages/create#create.tools
-        """
-        #TODO:
-        # Provide dict with tool configuration in according to Anthropic Spec
-        raise NotImplementedError
+        """Tool schema formatted for the Anthropic Messages API."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "input_schema": self.input_schema,
+        }
