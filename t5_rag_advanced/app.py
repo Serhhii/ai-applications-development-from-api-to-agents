@@ -1,8 +1,11 @@
-from commons.constants import OPENAI_API_KEY, OPENAI_EMBEDDINGS_ENDPOINT, OPENAI_CHAT_COMPLETIONS_ENDPOINT
+import anthropic
+
+# from commons.constants import OPENAI_API_KEY, OPENAI_EMBEDDINGS_ENDPOINT, OPENAI_CHAT_COMPLETIONS_ENDPOINT
+from commons.constants import ANTHROPIC_API_KEY
 from commons.models.conversation import Conversation
 from commons.models.message import Message
 from commons.models.role import Role
-from t5_rag_advanced.chat.chat_completion_client import ChatCompletionClient
+# from t5_rag_advanced.chat.chat_completion_client import ChatCompletionClient
 from t5_rag_advanced.embeddings.embeddings_client import EmbeddingsClient
 from t5_rag_advanced.embeddings.text_processor import TextProcessor, SearchMode
 
@@ -27,16 +30,17 @@ User Question:
 
 def main():
     embeddings_client = EmbeddingsClient(
-        endpoint=OPENAI_EMBEDDINGS_ENDPOINT,
-        model_name='text-embedding-3-small',
-        api_key=OPENAI_API_KEY
+        endpoint='',
+        model_name='',
+        api_key=''
     )
 
-    chat_client = ChatCompletionClient(
-        endpoint=OPENAI_CHAT_COMPLETIONS_ENDPOINT,
-        model_name='gpt-5.2',
-        api_key=OPENAI_API_KEY
-    )
+    # chat_client = ChatCompletionClient(
+    #     endpoint=OPENAI_CHAT_COMPLETIONS_ENDPOINT,
+    #     model_name='gpt-5.2',
+    #     api_key=OPENAI_API_KEY
+    # )
+    anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     db_config = {
         'host': 'localhost',
@@ -84,10 +88,21 @@ def main():
 
         # Generation
         conversation.add_message(Message(Role.USER, augmented_prompt))
-        response_message = chat_client.get_completion(conversation.messages)
 
-        print(f"\nAssistant: {response_message.content}")
-        conversation.add_message(response_message)
+        response = anthropic_client.messages.create(
+            model='claude-haiku-4-5-20251001',
+            max_tokens=1024,
+            system=SYSTEM_PROMPT,
+            messages=[
+                {'role': msg.role, 'content': msg.content}
+                for msg in conversation.messages
+                if msg.role != Role.SYSTEM
+            ]
+        )
+        reply = response.content[0].text
+        print(f"\nAssistant: {reply}")
+        conversation.add_message(Message(Role.ASSISTANT, reply))
+
 
 if __name__ == "__main__":
     main()
