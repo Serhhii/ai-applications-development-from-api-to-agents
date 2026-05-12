@@ -33,12 +33,31 @@ class EmbeddingsClient:
             dimensions: number of dimensions
             print_response: to print response in chat or not
         """
-        #TODO:
-        # ---
-        # https://developers.openai.com/api/reference/resources/embeddings/methods/create
-        # ---
-        # Provide implementation that will generate embeddings for `inputs` list (don't forget about dimensions) with
-        # Embedding model and return back a dict with indexed embeddings (key is index from input list and value vector list)
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": self._api_key
+        }
+
+        data = {
+            "input": inputs,
+            "model": self._model_name,
+            "dimensions": dimensions
+        }
+
+        response = requests.post(self._endpoint, headers=headers, json=data)
+
+        if response.status_code != 200:
+            raise Exception(f"OpenAI API error: {response.text}")
+
+        response_json = response.json()
+        if print_response:
+            print(json.dumps(response_json, indent=2))
+
+        embeddings_dict = {}
+        for item in response_json["data"]:
+            embeddings_dict[item["index"]] = item["embedding"]
+
+        return embeddings_dict
 
 
 # Hint:
